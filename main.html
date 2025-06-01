@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagrama de Gantt Interactivo del Protocolo</title>
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #eef2f5; /* Un gris azulado más claro para el fondo */
+            color: #1a202c; /* Texto principal más oscuro */
+        }
+        .container-fluid {
+            max-width: 100%;
+            padding-left: 0;
+            padding-right: 0;
+        }
+        .header {
+            background: linear-gradient(90deg, #3a7bd5 0%, #3a6073 100%); /* Gradiente sutil */
+            color: white;
+            padding: 25px 20px;
+            text-align: center;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .header h1 {
+            font-weight: 600;
+        }
+        .main-content {
+            padding: 20px;
+            max-width: 1400px; /* Limitar ancho máximo para pantallas grandes */
+            margin: 0 auto;
+        }
+        .filters-container {
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+        .filter-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 12px;
+        }
+        .filter-button {
+            background-color: #4a90e2; /* Azul más vibrante */
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 20px; /* Botones más redondeados (píldora) */
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .filter-button:hover {
+            background-color: #357ABD;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+        }
+        .filter-button.active {
+            background-color: #275a8c; /* Un azul más oscuro para el activo */
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
+            transform: translateY(0);
+        }
+        #gantt_chart_div_container {
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        #gantt_chart_div {
+            width: 100%;
+            min-height: 500px; /* Altura mínima */
+            height: auto; /* Permitir que crezca */
+            box-sizing: border-box;
+        }
+        .footer {
+            text-align: center;
+            padding: 25px 15px;
+            font-size: 0.9em;
+            color: #4a5568; /* Gris más oscuro para el texto del footer */
+            margin-top: 30px;
+            border-top: 1px solid #e2e8f0;
+        }
+        /* Estilos para el tooltip de Google Charts */
+        .google-visualization-tooltip {
+            border: 1px solid #cbd5e0 !important;
+            border-radius: 8px !important;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+            padding: 12px !important;
+            background-color: #ffffff !important;
+        }
+        .google-visualization-tooltip-item {
+            font-family: 'Inter', sans-serif !important;
+            color: #2d3748 !important; /* Texto del tooltip más oscuro */
+        }
+        .google-visualization-tooltip-item > span:first-child {
+            font-weight: 600 !important;
+        }
+        .loading-message {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            min-height: 200px;
+            font-size: 1.1em;
+            color: #4a5568;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="header">
+            <h1 class="text-3xl">Diagrama de Gantt: Implementación del Protocolo ESC 0/1h</h1>
+        </div>
+
+        <div class="main-content">
+            <div class="filters-container">
+                <div class="filter-buttons" id="filterButtonsContainer">
+                    </div>
+            </div>
+
+            <div id="gantt_chart_div_container">
+                <div id="gantt_chart_div">
+                    <div class="loading-message">
+                        <p>Cargando diagrama...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>&copy; <span id="currentYear"></span> Hospital General de Parc Sanitari Sant Joan de Déu de Sant Boi. Todos los derechos reservados.</p>
+            <p>Este diagrama de Gantt es una representación visual del cronograma de implementación.</p>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        // Datos de las tareas del cronograma
+        const tasksData = [
+          { "id": "P0", "name": "Fase 0: Planificación Estratégica y Adecuación de Recursos", "start": "2025-06-02", "end": "2025-08-24", "parent": null, "resource": "Fase 0" },
+          { "id": "P0.1", "name": "Constitución del equipo, revisión final del protocolo, inicio diseño HCE (Semanas -12 a -9)", "start": "2025-06-02", "end": "2025-06-29", "parent": "P0", "resource": "Fase 0" },
+          { "id": "P0.2", "name": "Diseño y preparación de materiales formativos, validación puntos de corte laboratorio, inicio recogida datos basales (Semanas -8 a -5)", "start": "2025-06-30", "end": "2025-07-27", "parent": "P0", "resource": "Fase 0" },
+          { "id": "P0.3", "name": "Programación y convocatoria de sesiones formativas, pruebas finales HCE/SIL, finalización recogida datos basales (Semanas -4 a -1)", "start": "2025-07-28", "end": "2025-08-24", "parent": "P0", "resource": "Fase 0" },
+          { "id": "P1", "name": "Fase 1: Formación Intensiva y Período de \"Adaptación Supervisada\"", "start": "2025-08-25", "end": "2025-09-28", "parent": null, "resource": "Fase 1" },
+          { "id": "P1.1", "name": "Comienzo de las sesiones de formación inaugural y específicas. Distribución de material (Semana 0)", "start": "2025-08-25", "end": "2025-08-31", "parent": "P1", "resource": "Fase 1" },
+          { "id": "P1.2", "name": "Continuación de sesiones formativas hasta cubrir todo el personal. Inicio \"Adaptación Supervisada\" (Semanas 1-3)", "start": "2025-09-01", "end": "2025-09-21", "parent": "P1", "resource": "Fase 1" },
+          { "id": "P1.3", "name": "Últimas sesiones formativas, evaluación de la fase de adaptación (Semana 4)", "start": "2025-09-22", "end": "2025-09-28", "parent": "P1", "resource": "Fase 1" },
+          { "id": "P2", "name": "Fase 2: Lanzamiento Oficial (\"Go-Live\") y Monitorización Estrecha", "start": "2025-09-29", "end": "2025-12-21", "parent": null, "resource": "Fase 2" },
+          { "id": "P2.1", "name": "Lanzamiento oficial del protocolo. Inicio monitorización estrecha (Semana 5)", "start": "2025-09-29", "end": "2025-10-05", "parent": "P2", "resource": "Fase 2" },
+          { "id": "P2.2", "name": "Monitorización intensiva semanal/quincenal, reuniones semanales equipo, micro-sesiones de refuerzo (Semanas 6-16)", "start": "2025-10-06", "end": "2025-12-21", "parent": "P2", "resource": "Fase 2" },
+          { "id": "P3", "name": "Fase 3: Consolidación, Monitorización Continua y Optimización", "start": "2025-12-22", "end": "2026-08-23", "parent": null, "resource": "Fase 3" },
+          { "id": "P3.1", "name": "Transición a monitorización mensual/trimestral, inicio auditorías periódicas (Semana 17 en adelante)", "start": "2025-12-22", "end": "2026-08-23", "parent": "P3", "resource": "Fase 3" },
+          { "id": "P4", "name": "Fase 4: Evaluación Formal y Diseminación de Resultados", "start": "2026-08-24", "end": "2026-09-20", "parent": null, "resource": "Fase 4" },
+          { "id": "P4.1", "name": "Primera evaluación anual formal y elaboración de informe (Mes 12)", "start": "2026-08-24", "end": "2026-09-20", "parent": "P4", "resource": "Fase 4" }
+        ];
+
+        // Cargar la librería de Google Charts
+        google.charts.load('current', {'packages':['gantt'], 'language': 'es'});
+        google.charts.setOnLoadCallback(initChart);
+
+        let chart;
+        let currentFilter = 'ALL';
+        const mainPhases = tasksData.filter(task => task.parent === null);
+
+        // Función para parsear las fechas en formato YYYY-MM-DD a objetos Date
+        function parseDate(dateString) {
+            const [year, month, day] = dateString.split('-').map(Number);
+            return new Date(year, month - 1, day); // Mes es 0-indexado en JavaScript
+        }
+
+        // Función para inicializar el gráfico y los botones de filtro
+        function initChart() {
+            const chartContainer = document.getElementById('gantt_chart_div');
+            if (!chartContainer) {
+                console.error("El contenedor del gráfico 'gantt_chart_div' no existe.");
+                return;
+            }
+            chart = new google.visualization.Gantt(chartContainer);
+            createFilterButtons();
+            drawChart();
+            window.addEventListener('resize', () => setTimeout(drawChart, 200)); // Redibujar con un pequeño delay
+            document.getElementById('currentYear').textContent = new Date().getFullYear();
+        }
+        
+        // Función para crear los botones de filtro dinámicamente
+        function createFilterButtons() {
+            const container = document.getElementById('filterButtonsContainer');
+            if (!container) {
+                console.error("El contenedor de botones 'filterButtonsContainer' no existe.");
+                return;
+            }
+            container.innerHTML = ''; // Limpiar botones existentes
+            
+            const allButton = document.createElement('button');
+            allButton.textContent = 'Todas las Fases';
+            allButton.classList.add('filter-button');
+            if (currentFilter === 'ALL') allButton.classList.add('active');
+            allButton.dataset.filter = 'ALL';
+            allButton.addEventListener('click', () => setFilter('ALL'));
+            container.appendChild(allButton);
+
+            mainPhases.forEach(phase => {
+                const button = document.createElement('button');
+                button.textContent = phase.name.split(':')[0]; 
+                button.classList.add('filter-button');
+                if (currentFilter === phase.id) button.classList.add('active');
+                button.dataset.filter = phase.id;
+                button.addEventListener('click', () => setFilter(phase.id));
+                container.appendChild(button);
+            });
+        }
+
+        // Función para establecer el filtro y actualizar la clase activa de los botones
+        function setFilter(filterValue) {
+            currentFilter = filterValue;
+            document.querySelectorAll('.filter-button').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.filter === currentFilter);
+            });
+            drawChart();
+        }
+
+        // Función principal para dibujar el gráfico
+        function drawChart() {
+            const data = new google.visualization.DataTable();
+            data.addColumn('string', 'ID Tarea');
+            data.addColumn('string', 'Nombre Tarea');
+            data.addColumn('string', 'Recurso'); 
+            data.addColumn('date', 'Fecha Inicio');
+            data.addColumn('date', 'Fecha Fin');
+            data.addColumn('number', 'Duración (ms)'); 
+            data.addColumn('number', 'Porcentaje Completado');
+            data.addColumn('string', 'Dependencias');
+
+            let tasksToDisplay;
+            if (currentFilter === 'ALL') {
+                tasksToDisplay = tasksData;
+            } else {
+                tasksToDisplay = tasksData.filter(task => task.id === currentFilter || task.parent === currentFilter);
+            }
+            
+            tasksToDisplay.sort((a, b) => {
+                if (a.parent === null && b.parent !== null && b.parent === a.id) return -1;
+                if (b.parent === null && a.parent !== null && a.parent === b.id) return 1;
+                if (a.parent === b.parent) return parseDate(a.start) - parseDate(b.start) || a.id.localeCompare(b.id);
+                if (a.parent === null) return -1;
+                if (b.parent === null) return 1;
+                return (a.parent || a.id).localeCompare(b.parent || b.id) || parseDate(a.start) - parseDate(b.start);
+            });
+
+            tasksToDisplay.forEach(task => {
+                data.addRow([
+                    task.id,
+                    task.name,
+                    task.resource,
+                    parseDate(task.start),
+                    parseDate(task.end),
+                    null, 
+                    0,    
+                    task.parent 
+                ]);
+            });
+            
+            const chartElement = document.getElementById('gantt_chart_div');
+            // Ajustar altura dinámicamente
+            const rowHeight = 41; // Altura de cada fila de tarea
+            const headerHeight = 50; // Espacio para la cabecera del gráfico
+            const calculatedHeight = tasksToDisplay.length * rowHeight + headerHeight;
+            chartElement.style.height = Math.max(300, calculatedHeight) + 'px'; // Mínimo 300px
+
+            const options = {
+                // height: se establece dinámicamente arriba
+                gantt: {
+                    trackHeight: 35, // Altura de la pista
+                    barHeight: 20, // Altura de la barra de tarea
+                    criticalPathEnabled: false,
+                    arrow: { // Configuración para quitar las flechas
+                        angle: 90,
+                        width: 0, // Ancho de la flecha a 0 para ocultarla
+                        color: 'transparent', // Color transparente por si acaso
+                        radius: 0
+                    },
+                    sortTasks: false, // Ordenado manualmente
+                    labelStyle: {
+                        fontName: 'Inter',
+                        fontSize: 12.5,
+                        color: '#2d3748' // Texto de etiqueta más oscuro
+                    },
+                    palette: [
+                        { "color": "#6366f1", "dark": "#4f46e5", "light": "#a5b4fc" }, // Indigo
+                        { "color": "#3b82f6", "dark": "#2563eb", "light": "#93c5fd" }, // Blue
+                        { "color": "#10b981", "dark": "#059669", "light": "#6ee7b7" }, // Emerald
+                        { "color": "#f59e0b", "dark": "#d97706", "light": "#fcd34d" }, // Amber
+                        { "color": "#ef4444", "dark": "#dc2626", "light": "#fca5a5" }, // Red
+                        { "color": "#8b5cf6", "dark": "#7c3aed", "light": "#c4b5fd" }  // Violet
+                    ],
+                    innerGridHorizLine: {
+                        stroke: '#e2e8f0', // Líneas horizontales más claras
+                        strokeWidth: 1
+                    },
+                    innerGridTrack: { fill: '#f8fafc' }, // Fondo de pista muy claro (casi blanco)
+                    innerGridDarkTrack: { fill: '#f1f5f9' }, // Fondo de pista alterno un poco más oscuro
+                    percentEnabled: false, // No se muestra porcentaje de completado en la barra
+                    shadowEnabled: true,
+                    shadowColor: '#a0aec0',
+                    shadowOffset: 2,
+                },
+                tooltip: {isHtml: true, trigger: 'focus'} // Tooltip al enfocar para mejor accesibilidad
+            };
+
+            if (chart && chartElement) {
+                 // Limpiar mensaje de carga
+                if (tasksToDisplay.length > 0) {
+                    chartElement.innerHTML = '';
+                } else {
+                    chartElement.innerHTML = '<div class="loading-message"><p>No hay tareas para mostrar con el filtro actual.</p></div>';
+                }
+                if (tasksToDisplay.length > 0) {
+                    chart.draw(data, options);
+                }
+            } else {
+                console.error("El objeto del gráfico o el contenedor no están disponibles.");
+            }
+        }
+    </script>
+
+</body>
+</html>
